@@ -15,6 +15,7 @@ function cors(env, req) {
   return {
     "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0] || "",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Max-Age": "86400",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
     Vary: "Origin",
   };
@@ -73,13 +74,45 @@ export default {
       if (!(await tokenValido(env, req))) return json({ error: "No autorizado" }, 401, h);
 
       if (pathname === "/api/notas" && req.method === "GET") {
-        const { results } = await env.DB.prepare(`SELECT id, ${NOTA_COLS.join(",")}, creado_en FROM notas ORDER BY fecha DESC, id DESC`).all();
+        const { results } = await env.DB.prepare(
+          `SELECT n.id, ${NOTA_COLS.map((c) => "n." + c).join(",")}, n.reasignada_de, n.creado_en, a.id AS analisis_id
+           FROM notas n LEFT JOIN analisis a ON a.nota_id = n.id
+           ORDER BY n.fecha DESC, n.id DESC`).all();
         return json({ notas: results }, 200, h);
       }
 
       if (pathname === "/api/analisis" && req.method === "GET") {
-        const { results } = await env.DB.prepare("SELECT * FROM analisis ORDER BY fecha DESC, id DESC").all();
+        const { results } = await env.DB.prepare(
+          `SELECT a.*, n.chofer, n.fecha AS nota_fecha FROM analisis a LEFT JOIN notas n ON n.id = a.nota_id
+           ORDER BY COALESCE(a.actualizado_en, a.fecha) DESC, a.id DESC`).all();
         return json({ analisis: results }, 200, h);
+      }
+
+      // Crear o actualizar el 5 porqués de una nota
+      if (pathname === "/api/analisis" && req.method === "POST") {
+        const b = await req.json();
+        const notaId = Number(b.nota_id);
+        if (!Number.isInteger(notaId) || notaId <= 0) return json({ error: "Falta la nota" }, 400, h);
+        const nota = await env.DB.prepare("SELECT * FROM notas WHERE id = ?").bind(notaId).first();
+        if (!nota) return json({ error: "La nota no existe" }, 404, h);
+        const txt = (v) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 2000) : null);
+        const campos = ["kpi", "porque1", "porque2", "porque3", "porque4", "porque5", "accion_correctiva", "responsable"];
+        const v = Object.fromEntries(campos.map((c) => [c, txt(b[c])]));
+        if (!v.porque1 || !v.accion_correctiva) return json({ error: "Escribe al menos el 1er por qué y la acción correctiva" }, 400, h);
+        await env.DB.prepare(
+          `INSERT INTO analisis (ext_id, nota_id, fecha, ruta, codigo_cliente, nombre_cliente, situacion, tipo_reclamo,
+             kpi, porque1, porque2, porque3, porque4, porque5, accion_correctiva, responsable, actualizado_en)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+           ON CONFLICT(ext_id) DO UPDATE SET kpi=excluded.kpi, porque1=excluded.porque1, porque2=excluded.porque2,
+             porque3=excluded.porque3, porque4=excluded.porque4, porque5=excluded.porque5,
+             accion_correctiva=excluded.accion_correctiva, responsable=excluded.responsable, actualizado_en=datetime('now')`
+        ).bind(
+          // Si la nota ya tiene análisis (p. ej. del histórico) se actualiza ese mismo registro
+          (await env.DB.prepare("SELECT ext_id FROM analisis WHERE nota_id = ?").bind(notaId).first())?.ext_id || `nota-${notaId}`,
+          notaId, nota.fecha, nota.ruta, nota.codigo_cliente, nota.nombre_cliente, nota.situacion, nota.tipo_reclamo,
+          v.kpi, v.porque1, v.porque2, v.porque3, v.porque4, v.porque5, v.accion_correctiva, v.responsable
+        ).run();
+        return json({ ok: true }, 200, h);
       }
 
       if (pathname === "/api/importar" && req.method === "POST") {

@@ -15,6 +15,14 @@ Los datos de clientes **no** están en este repositorio; solo se leen desde D1 t
 2. En el dashboard → **Subir Excel del Forms**.
 3. Solo se agregan las respuestas nuevas (se reconoce cada una por su `Id`), así que puedes subir el mismo archivo completo cada vez.
 
+## 5 porqués
+
+En **Detalle de notas** cada nota tiene un botón **Hacer** (o **✓ Ver** si ya tiene análisis). Se guarda KPI, los 5 porqués, la acción correctiva y el responsable en la tabla `analisis`, ligado a la nota por `nota_id`. El filtro «5 porqués» muestra las pendientes.
+
+## Choferes que salen del Headcount
+
+`scripts/redistribuir.py` reparte sus notas entre los choferes activos (al que tenga menos notas). El nombre anterior queda en `reasignada_de` y en el dashboard la nota aparece marcada como «reasignada». Para actualizar la lista de choferes activos, edita `CHOFERES` en `scripts/migrar_historico.py`.
+
 ## Tablas en D1
 
 | Tabla | Contenido |

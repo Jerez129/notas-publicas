@@ -119,9 +119,14 @@ def main(path):
         fecha = r.get("Fecha")
         if not fecha and not r.get("Nombre Cliente"):
             continue
+        # En el Excel el encabezado viene dañado ("Queja del Cliente ó Chofer"),
+        # así que se busca por la palabra "QUEJA".
+        queja = next((v for k, v in r.items() if "QUEJA" in key(k)), None)
         vals = {
+            # El 4º componente queda en None a propósito: así se generó la carga
+            # original y cambiarlo duplicaría las notas ya cargadas en D1.
             "ext_id": ext_id("hist", r.get("Codigo NP"), fecha, r.get("Código Cliente"),
-                             r.get("Queja del Cliente – Chofer"), seen=seen),
+                             None, seen=seen),
             "origen": "historico",
             "codigo_np": clean(r.get("Codigo NP")),
             "fecha": clean(fecha),
@@ -134,7 +139,7 @@ def main(path):
             "nombre_cliente": clean(r.get("Nombre Cliente")),
             "categoria": categoria(r.get("Categoria")),
             "tipo_reclamo": clean(r.get("Tipo de Reclamo")),
-            "situacion": clean(r.get("Queja del Cliente – Chofer")),
+            "situacion": clean(queja),
             "vendedor": clean(r.get("Asesores")),
             "ruta_preventa": clean(r.get("Ruta Preventa")),
             "coordinador_ventas": clean(r.get("Coordinador de Ventas")),
@@ -147,6 +152,8 @@ def main(path):
         }
         cols = ",".join(vals)
         out.append(f"INSERT OR IGNORE INTO notas ({cols}) VALUES ({','.join(sql(v) for v in vals.values())});")
+        if vals["situacion"]:
+            out.append(f"UPDATE notas SET situacion={sql(vals['situacion'])} WHERE ext_id={sql(vals['ext_id'])} AND situacion IS NULL;")
         n_notas += 1
 
     # --- KPIS: análisis 5 porqués --------------------------------------

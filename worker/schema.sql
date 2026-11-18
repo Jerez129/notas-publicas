@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS notas (
   plazo              TEXT,
   fecha_cierre       TEXT,
   comentario         TEXT,
+  reasignada_de      TEXT,                   -- chofer anterior si la nota se redistribuyó
   creado_en          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_notas_fecha  ON notas(fecha);
@@ -45,8 +46,12 @@ CREATE TABLE IF NOT EXISTS analisis (
   kpi              TEXT,
   porque1 TEXT, porque2 TEXT, porque3 TEXT, porque4 TEXT, porque5 TEXT,
   accion_correctiva TEXT,
+  nota_id          INTEGER,                -- nota pública a la que pertenece
+  responsable      TEXT,
+  actualizado_en   TEXT,
   creado_en        TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_analisis_nota ON analisis(nota_id) WHERE nota_id IS NOT NULL;
 
 -- Respaldo crudo de la hoja "PEGAR DATA ROADMAP" (para no perder nada)
 CREATE TABLE IF NOT EXISTS roadmap_raw (

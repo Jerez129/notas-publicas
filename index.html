@@ -111,6 +111,22 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .tip{position:fixed;pointer-events:none;background:var(--text);color:var(--surface);padding:6px 9px;border-radius:6px;font-size:12px;z-index:50;white-space:nowrap;transform:translate(-50%,-110%)}
 .note{background:var(--surface-2);border-radius:8px;padding:10px 12px;color:var(--text-2);font-size:13px;margin:10px 0}
 .pill-clear{font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0}
+.btn-sm{min-height:28px;padding:3px 10px;font-size:12px;white-space:nowrap}
+.btn-done{color:var(--good);border-color:var(--good)}
+.tag-warn{background:transparent;border:1px solid var(--border)}
+dialog{border:1px solid var(--border);border-radius:14px;padding:0;background:var(--surface);color:var(--text);width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.dlg-head{padding:18px 20px 12px;border-bottom:1px solid var(--border)}
+.dlg-head h2{margin:0 0 6px;font-size:16px}
+.dlg-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--text-2)}
+.dlg-sit{margin:10px 0 0;padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:13px}
+.dlg-body{padding:16px 20px;overflow:auto}
+.dlg-body textarea,.dlg-body input[type=text]{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
+.why{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:start;margin-bottom:8px}
+.why b{display:grid;place-items:center;height:36px;border-radius:8px;background:var(--surface-2);font-size:13px}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--border)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.two{grid-template-columns:1fr}}
 @media (max-width:820px){
   .grid{grid-template-columns:1fr}
   header{padding:12px 16px}
@@ -162,6 +178,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <div class="field"><label for="fTipo">Tipo de reclamo</label><select id="fTipo"></select></div>
       <div class="field"><label for="fOrigen">Origen</label><select id="fOrigen">
         <option value="">Todos</option><option value="historico">Histórico (Excel)</option><option value="forms">Forms</option></select></div>
+      <div class="field"><label for="fPq">5 porqués</label><select id="fPq">
+        <option value="">Todos</option><option value="no">Pendiente</option><option value="si">Hecho</option></select></div>
       <button class="btn" id="clearBtn">Limpiar</button>
     </div>
 
@@ -225,6 +243,43 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 </section>
 
 <div class="tip hidden" id="tip"></div>
+
+<dialog id="dlg">
+  <form method="dialog" id="pqForm">
+    <div class="dlg-head">
+      <h2>Análisis 5 porqués</h2>
+      <div class="dlg-meta" id="dlgMeta"></div>
+      <p class="dlg-sit" id="dlgSit"></p>
+    </div>
+    <div class="dlg-body">
+      <div class="two">
+        <div class="field"><label for="pqKpi">KPI afectado</label>
+          <select id="pqKpi">
+            <option value="">— Selecciona —</option>
+            <option>SAFETY – TRI / LTI</option>
+            <option>RTM – Route to Market</option>
+            <option>ON TIME – Entrega a Tiempo</option>
+            <option>OTIF – On Time In Full</option>
+            <option>ASSET EFFICIENCY</option>
+          </select></div>
+        <div class="field"><label for="pqResp">Responsable</label><input type="text" id="pqResp" maxlength="120" placeholder="Quién ejecuta la acción"></div>
+      </div>
+      <div class="field" style="margin-bottom:6px"><label>¿Por qué? (del síntoma a la causa raíz)</label></div>
+      <div class="why"><b>1</b><input type="text" id="pq1" maxlength="400" required placeholder="¿Por qué pasó esto?"></div>
+      <div class="why"><b>2</b><input type="text" id="pq2" maxlength="400" placeholder="¿Y por qué…?"></div>
+      <div class="why"><b>3</b><input type="text" id="pq3" maxlength="400"></div>
+      <div class="why"><b>4</b><input type="text" id="pq4" maxlength="400"></div>
+      <div class="why"><b>5</b><input type="text" id="pq5" maxlength="400" placeholder="Causa raíz"></div>
+      <div class="field" style="margin-top:12px"><label for="pqAcc">Acción correctiva</label>
+        <textarea id="pqAcc" rows="3" maxlength="1500" required placeholder="Qué se va a hacer para que no se repita"></textarea></div>
+      <p class="error" id="pqErr"></p>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel" formnovalidate>Cancelar</button>
+      <button class="btn btn-primary" id="pqSave" value="save">Guardar</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const API = "https://notas-publicas-api.japf20092004.workers.dev";
@@ -301,10 +356,11 @@ function buildFilters() {
   const total = NOTAS.length, forms = NOTAS.filter((r) => r.origen === "forms").length;
   $("#subtitle").textContent = `${total} notas · ${total - forms} del histórico, ${forms} del Forms` + (meses.length ? ` · ${meses[0]} a ${meses[meses.length - 1]}` : "");
 }
-["#fDesde","#fHasta","#fRuta","#fChofer","#fTipo","#fOrigen"].forEach((s) => $(s).addEventListener("change", render));
-$("#clearBtn").onclick = () => { ["#fDesde","#fHasta","#fRuta","#fChofer","#fTipo","#fOrigen"].forEach((s) => ($(s).value = "")); render(); };
+const FILTROS = ["#fDesde","#fHasta","#fRuta","#fChofer","#fTipo","#fOrigen","#fPq"];
+FILTROS.forEach((s) => $(s).addEventListener("change", render));
+$("#clearBtn").onclick = () => { FILTROS.forEach((s) => ($(s).value = "")); render(); };
 function filtered() {
-  const d = $("#fDesde").value, h = $("#fHasta").value, ru = $("#fRuta").value, ch = $("#fChofer").value, ti = $("#fTipo").value, or = $("#fOrigen").value;
+  const d = $("#fDesde").value, h = $("#fHasta").value, ru = $("#fRuta").value, ch = $("#fChofer").value, ti = $("#fTipo").value, or = $("#fOrigen").value, pq = $("#fPq").value;
   return NOTAS.filter((r) => {
     const m = mes(r.fecha);
     if (d && (!m || m < d)) return false;
@@ -313,6 +369,8 @@ function filtered() {
     if (ch && r.chofer !== ch) return false;
     if (ti && r.tipo_reclamo !== ti) return false;
     if (or && r.origen !== or) return false;
+    if (pq === "si" && !r.analisis_id) return false;
+    if (pq === "no" && r.analisis_id) return false;
     return true;
   });
 }
@@ -358,7 +416,9 @@ function renderTiles(rows) {
   const clientes = count(rows.filter((r) => r.codigo_cliente), "codigo_cliente");
   const reinc = clientes.filter(([, n]) => n >= 2).length;
   const choferes = new Set(rows.map((r) => r.chofer).filter(Boolean)).size;
+  const conPq = rows.filter((r) => r.analisis_id).length;
   const tiles = [
+    ["Con 5 porqués", `${conPq}`, rows.length ? `${Math.round((conPq / rows.length) * 100)}% · ${rows.length - conPq} pendientes` : "—"],
     ["Total de notas", rows.length, `${meses.length} meses en el periodo`],
     [ult ? `Último mes (${mesLabel(ult)})` : "Último mes", nU, delta === null ? "—" : `${delta > 0 ? "▲ +" : delta < 0 ? "▼ " : "= "}${delta} vs ${mesLabel(prev)}`],
     ["Promedio mensual", prom.toFixed(1), "notas por mes"],
@@ -429,10 +489,49 @@ function renderDetalle(rows) {
   detRows = q ? rows.filter((r) => DET_COLS.some(([k]) => String(r[k] || "").toLowerCase().includes(q))) : rows;
   $("#countDetalle").textContent = `${detRows.length} notas`;
   const shown = detRows.slice(0, 500);
-  $("#detalle").innerHTML = `<thead><tr>${DET_COLS.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>` +
-    shown.map((r) => `<tr>${DET_COLS.map(([k]) => k === "origen" ? `<td><span class="tag">${r.origen === "forms" ? "Forms" : "Histórico"}</span></td>` : `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("") + "</tbody>" +
-    (detRows.length > 500 ? `<tfoot><tr><td colspan="${DET_COLS.length}" style="color:var(--muted)">Mostrando 500 de ${detRows.length}. Usa la búsqueda o descarga el CSV.</td></tr></tfoot>` : "");
+  const cell = (r, k) => {
+    if (k === "origen") return `<td><span class="tag">${r.origen === "forms" ? "Forms" : "Histórico"}</span></td>`;
+    if (k === "chofer" && r.reasignada_de) return `<td>${esc(r.chofer)} <span class="tag tag-warn" title="Reasignada: antes era de ${esc(r.reasignada_de)}, que ya no está en el Headcount">reasignada</span></td>`;
+    return `<td>${esc(r[k])}</td>`;
+  };
+  $("#detalle").innerHTML = `<thead><tr><th>5 porqués</th>${DET_COLS.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>` +
+    shown.map((r) => `<tr><td>${r.analisis_id
+        ? `<button class="btn btn-sm btn-done" data-pq="${r.id}" title="Ver o editar el análisis">✓ Ver</button>`
+        : `<button class="btn btn-sm" data-pq="${r.id}">Hacer</button>`}</td>${DET_COLS.map(([k]) => cell(r, k)).join("")}</tr>`).join("") + "</tbody>" +
+    (detRows.length > 500 ? `<tfoot><tr><td colspan="${DET_COLS.length + 1}" style="color:var(--muted)">Mostrando 500 de ${detRows.length}. Usa la búsqueda o descarga el CSV.</td></tr></tfoot>` : "");
 }
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-pq]"); if (b) abrirPq(Number(b.dataset.pq)); });
+
+/* ---------- 5 porqués ---------- */
+let pqNota = null;
+function abrirPq(notaId) {
+  const n = NOTAS.find((x) => x.id === notaId); if (!n) return;
+  pqNota = n;
+  const a = ANALISIS.find((x) => x.nota_id === notaId) || {};
+  $("#dlgMeta").innerHTML = [n.fecha, n.ruta, n.chofer, `${n.codigo_cliente || ""} ${n.nombre_cliente || ""}`.trim(), n.tipo_reclamo]
+    .filter(Boolean).map((t) => `<span>${esc(t)}</span>`).join("");
+  $("#dlgSit").textContent = n.situacion || "(sin descripción)";
+  $("#pqKpi").value = a.kpi || ""; if (a.kpi && $("#pqKpi").value !== a.kpi) { $("#pqKpi").insertAdjacentHTML("beforeend", `<option>${esc(a.kpi)}</option>`); $("#pqKpi").value = a.kpi; }
+  $("#pqResp").value = a.responsable || "";
+  [1,2,3,4,5].forEach((i) => ($("#pq" + i).value = a["porque" + i] || ""));
+  $("#pqAcc").value = a.accion_correctiva || "";
+  $("#pqErr").textContent = "";
+  $("#dlg").showModal();
+}
+$("#pqForm").addEventListener("submit", async (e) => {
+  if (e.submitter?.value !== "save") return;
+  e.preventDefault();
+  $("#pqErr").textContent = ""; $("#pqSave").disabled = true;
+  try {
+    const body = { nota_id: pqNota.id, kpi: $("#pqKpi").value, responsable: $("#pqResp").value, accion_correctiva: $("#pqAcc").value };
+    [1,2,3,4,5].forEach((i) => (body["porque" + i] = $("#pq" + i).value));
+    await api("/api/analisis", { method: "POST", body: JSON.stringify(body) });
+    $("#dlg").close();
+    const [nn, aa] = await Promise.all([api("/api/notas"), api("/api/analisis")]);
+    NOTAS = nn.notas; ANALISIS = aa.analisis; render(); renderAnalisis();
+  } catch (err) { $("#pqErr").textContent = err.message; }
+  finally { $("#pqSave").disabled = false; }
+});
 $("#search").addEventListener("input", () => renderDetalle(filtered()));
 $("#csvBtn").onclick = () => {
   const lines = [DET_COLS.map(([, l]) => l).join(",")].concat(detRows.map((r) => DET_COLS.map(([k]) => `"${String(r[k] ?? "").replace(/"/g, '""')}"`).join(",")));
@@ -441,9 +540,9 @@ $("#csvBtn").onclick = () => {
 };
 
 function renderAnalisis() {
-  const cols = [["fecha","Fecha"],["ruta","Ruta"],["nombre_cliente","Cliente"],["tipo_reclamo","Tipo de reclamo"],["kpi","KPI"],["porque1","1º Por qué"],["porque2","2º"],["porque3","3º"],["porque4","4º"],["porque5","5º"],["accion_correctiva","Acción correctiva"]];
-  $("#analisis").innerHTML = `<thead><tr>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>` +
-    ANALISIS.map((r) => `<tr>${cols.map(([k]) => `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("") + "</tbody>";
+  const cols = [["fecha","Fecha"],["ruta","Ruta"],["chofer","Chofer"],["nombre_cliente","Cliente"],["tipo_reclamo","Tipo de reclamo"],["kpi","KPI"],["porque1","1º Por qué"],["porque2","2º"],["porque3","3º"],["porque4","4º"],["porque5","5º"],["accion_correctiva","Acción correctiva"],["responsable","Responsable"]];
+  $("#analisis").innerHTML = `<thead><tr><th></th>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>` +
+    ANALISIS.map((r) => `<tr><td>${r.nota_id ? `<button class="btn btn-sm" data-pq="${r.nota_id}">Editar</button>` : ""}</td>${cols.map(([k]) => `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("") + "</tbody>";
 }
 
 /* ---------- Tabs ---------- */
