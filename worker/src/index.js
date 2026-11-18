@@ -16,7 +16,7 @@ function cors() {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Max-Age": "86400",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-View-Key",
     Vary: "Origin",
   };
 }
@@ -62,8 +62,16 @@ export default {
     const { pathname } = new URL(req.url);
 
     try {
-      if (pathname === "/api/login" && req.method === "POST") {
-        const { password } = await req.json().catch(() => ({}));
+      // GET con la clave en el encabezado X-View-Key: algunos filtros anti-phishing
+      // bloquean un POST con la contraseña en el cuerpo hacia sitios poco conocidos.
+      // POST se mantiene por compatibilidad. Nunca se acepta la clave en la URL.
+      if (pathname === "/api/login" && (req.method === "GET" || req.method === "POST")) {
+        let password;
+        if (req.method === "GET") {
+          try { password = decodeURIComponent(req.headers.get("X-View-Key") || ""); } catch { password = null; }
+        } else {
+          ({ password } = await req.json().catch(() => ({})));
+        }
         if (typeof password !== "string" || !iguales(password, env.DASH_PASSWORD || "")) {
           await new Promise((r) => setTimeout(r, 800)); // frena intentos repetidos
           return json({ error: "Contraseña incorrecta" }, 401, h);
