@@ -1,0 +1,10 @@
+# Datos de clientes: nunca al repositorio (viven solo en D1)
+data/
+*.xlsx
+*.xls
+*.csv
+
+node_modules/
+.wrangler/
+.dev.vars
+__pycache__/

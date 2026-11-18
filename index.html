@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notas Públicas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f4f2; --surface:#fcfcfb; --surface-2:#f0efec; --border:#e2e1dc;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#7a7974;
+  --accent:#2a78d6; --accent-ink:#ffffff;
+  --bar:#2a78d6; --bar-hover:#1c5cab;
+  --seq-0:#f0efec; --seq-1:#cde2fb; --seq-2:#9ec5f4; --seq-3:#6da7ec; --seq-4:#3987e5; --seq-5:#256abf; --seq-6:#184f95;
+  --good:#0ca30c; --critical:#d03b3b; --warning:#fab219;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --surface-2:#242422; --border:#33332f;
+    --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e86;
+    --accent:#3987e5; --bar:#3987e5; --bar-hover:#6da7ec;
+    --seq-0:#242422; --seq-1:#104281; --seq-2:#184f95; --seq-3:#1c5cab; --seq-4:#256abf; --seq-5:#3987e5; --seq-6:#6da7ec;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --surface-2:#242422; --border:#33332f;
+  --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e86;
+  --accent:#3987e5; --bar:#3987e5; --bar-hover:#6da7ec;
+  --seq-0:#242422; --seq-1:#104281; --seq-2:#184f95; --seq-3:#1c5cab; --seq-4:#256abf; --seq-5:#3987e5; --seq-6:#6da7ec;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.hidden{display:none!important}
+/* Login */
+#login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:360px;box-shadow:var(--shadow)}
+.login-card h1{font-size:20px;margin:0 0 4px}
+.login-card p{margin:0 0 18px;color:var(--text-2)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:12px;color:var(--text-2);font-weight:500}
+input[type=password],input[type=search],input[type=month],select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-height:36px;width:100%}
+.btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;min-height:36px;font-weight:500}
+.btn:hover{background:var(--surface-2)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn-primary:hover{filter:brightness(1.08);background:var(--accent)}
+.error{color:var(--critical);font-size:13px;min-height:18px;margin:8px 0 0}
+/* Layout */
+header{display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;font-weight:600}
+header .sub{color:var(--muted);font-size:12px}
+header .sp{flex:1}
+main{padding:20px 24px 48px;max-width:1400px;margin:0 auto}
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.tab{background:none;border:none;padding:10px 14px;cursor:pointer;color:var(--text-2);border-bottom:2px solid transparent;font-weight:500}
+.tab[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:18px}
+.filters .field{margin:0;min-width:150px;flex:1 1 150px;max-width:240px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.tile .lbl{color:var(--text-2);font-size:12px;font-weight:500}
+.tile .val{font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .delta{font-size:12px;color:var(--muted);margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow);min-width:0}
+.card.wide{grid-column:1/-1}
+.card h2{font-size:14px;margin:0 0 2px;font-weight:600}
+.card .hint{color:var(--muted);font-size:12px;margin:0 0 12px}
+/* Column chart */
+.cols{display:flex;align-items:flex-end;gap:8px;height:200px;padding-top:18px;border-bottom:1px solid var(--border)}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative;cursor:default}
+.col .bar{width:100%;max-width:44px;background:var(--bar);border-radius:4px 4px 0 0;min-height:2px}
+.col:hover .bar{background:var(--bar-hover)}
+.col .v{font-size:11px;color:var(--text-2);margin-bottom:3px;font-variant-numeric:tabular-nums}
+.col-labels{display:flex;gap:8px;margin-top:6px}
+.col-labels span{flex:1;text-align:center;font-size:11px;color:var(--muted)}
+/* Horizontal bars */
+.hbars{display:flex;flex-direction:column;gap:6px}
+.hrow{display:grid;grid-template-columns:minmax(120px,38%) 1fr 36px;gap:10px;align-items:center;font-size:12.5px;cursor:pointer;border-radius:6px;padding:2px 4px}
+.hrow:hover{background:var(--surface-2)}
+.hrow .n{color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .track{height:14px}
+.hrow .fill{height:100%;background:var(--bar);border-radius:0 4px 4px 0;min-width:2px}
+.hrow:hover .fill{background:var(--bar-hover)}
+.hrow .c{text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.hrow.sel .n{color:var(--text);font-weight:600}
+/* Heat table */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--text-2);font-weight:500;font-size:12px;position:sticky;top:0;background:var(--surface)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.heat td.h{text-align:center;font-variant-numeric:tabular-nums;min-width:44px;border:2px solid var(--surface);border-radius:4px}
+.heat td.h.dark{color:#fff}
+.heat th{text-align:center}
+.heat th:first-child,.heat td:first-child{text-align:left;white-space:nowrap}
+.legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:18px;height:10px;border-radius:2px}
+.table-tools{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.table-tools input{max-width:320px}
+.tbl-wrap{max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:8px}
+.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;background:var(--surface-2);color:var(--text-2);white-space:nowrap}
+.tip{position:fixed;pointer-events:none;background:var(--text);color:var(--surface);padding:6px 9px;border-radius:6px;font-size:12px;z-index:50;white-space:nowrap;transform:translate(-50%,-110%)}
+.note{background:var(--surface-2);border-radius:8px;padding:10px 12px;color:var(--text-2);font-size:13px;margin:10px 0}
+.pill-clear{font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0}
+@media (max-width:820px){
+  .grid{grid-template-columns:1fr}
+  header{padding:12px 16px}
+  main{padding:16px 16px 40px}
+  .filters .field{max-width:none}
+}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <form class="login-card" id="loginForm">
+    <h1>Notas Públicas</h1>
+    <p>CND CD Bávaro · Distribución</p>
+    <div class="field">
+      <label for="pwd">Contraseña</label>
+      <input type="password" id="pwd" autocomplete="current-password" required autofocus>
+    </div>
+    <button class="btn btn-primary" style="width:100%" type="submit" id="loginBtn">Entrar</button>
+    <p class="error" id="loginErr"></p>
+  </form>
+</section>
+
+<section id="app" class="hidden">
+  <header>
+    <div>
+      <h1>Notas Públicas · CND CD Bávaro</h1>
+      <div class="sub" id="subtitle">Cargando…</div>
+    </div>
+    <div class="sp"></div>
+    <label class="btn" for="fileInput" title="Sube el Excel de respuestas descargado de Microsoft Forms">Subir Excel del Forms</label>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+    <button class="btn" id="themeBtn" title="Cambiar tema">◐</button>
+    <button class="btn" id="logoutBtn">Salir</button>
+  </header>
+
+  <main>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="resumen">Resumen</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="detalle">Detalle de notas</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="analisis">Análisis 5 porqués</button>
+    </div>
+
+    <div class="filters" id="filters">
+      <div class="field"><label for="fDesde">Desde</label><input type="month" id="fDesde"></div>
+      <div class="field"><label for="fHasta">Hasta</label><input type="month" id="fHasta"></div>
+      <div class="field"><label for="fRuta">Ruta</label><select id="fRuta"></select></div>
+      <div class="field"><label for="fChofer">Chofer</label><select id="fChofer"></select></div>
+      <div class="field"><label for="fTipo">Tipo de reclamo</label><select id="fTipo"></select></div>
+      <div class="field"><label for="fOrigen">Origen</label><select id="fOrigen">
+        <option value="">Todos</option><option value="historico">Histórico (Excel)</option><option value="forms">Forms</option></select></div>
+      <button class="btn" id="clearBtn">Limpiar</button>
+    </div>
+
+    <div id="tab-resumen">
+      <div class="tiles" id="tiles"></div>
+      <div class="grid">
+        <div class="card wide">
+          <h2>Notas por mes</h2>
+          <p class="hint">Cantidad de notas públicas registradas cada mes</p>
+          <div id="chartMes"></div>
+        </div>
+        <div class="card">
+          <h2>Por tipo de reclamo</h2>
+          <p class="hint">Haz clic en una barra para filtrar</p>
+          <div id="chartTipo" class="hbars"></div>
+        </div>
+        <div class="card">
+          <h2>Por chofer</h2>
+          <p class="hint">Haz clic en una barra para filtrar</p>
+          <div id="chartChofer" class="hbars"></div>
+        </div>
+        <div class="card wide">
+          <h2>Farol por chofer y mes</h2>
+          <p class="hint">Notas de cada chofer por mes · más oscuro = más notas</p>
+          <div class="scroll"><table class="heat" id="heat"></table></div>
+          <div class="legend" id="heatLegend"></div>
+        </div>
+        <div class="card">
+          <h2>Por ruta</h2>
+          <p class="hint">Haz clic en una barra para filtrar</p>
+          <div id="chartRuta" class="hbars"></div>
+        </div>
+        <div class="card">
+          <h2>Clientes reincidentes</h2>
+          <p class="hint">Clientes con 2 o más notas en el periodo</p>
+          <div class="tbl-wrap" style="max-height:360px"><table id="reinc"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-detalle" class="hidden">
+      <div class="card">
+        <div class="table-tools">
+          <input type="search" id="search" placeholder="Buscar cliente, código, situación…">
+          <span class="sub" id="countDetalle" style="color:var(--muted);font-size:12px"></span>
+          <div class="sp" style="flex:1"></div>
+          <button class="btn" id="csvBtn">Descargar CSV</button>
+        </div>
+        <div class="tbl-wrap"><table id="detalle"></table></div>
+      </div>
+    </div>
+
+    <div id="tab-analisis" class="hidden">
+      <div class="card">
+        <h2>Análisis 5 porqués</h2>
+        <p class="hint">Histórico de la hoja KPIS</p>
+        <div class="tbl-wrap"><table id="analisis"></table></div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<div class="tip hidden" id="tip"></div>
+
+<script>
+const API = "https://notas-publicas-api.japf20092004.workers.dev";
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k){ try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { sessionStorage.setItem(k,v); } catch {} },
+  del(k){ try { sessionStorage.removeItem(k); } catch {} },
+};
+
+let NOTAS = [], ANALISIS = [];
+
+/* ---------- Tema ---------- */
+(function(){
+  let t = null; try { t = localStorage.getItem("np-theme"); } catch {}
+  if (t) document.documentElement.dataset.theme = t;
+  $("#themeBtn").onclick = () => {
+    const dark = document.documentElement.dataset.theme
+      ? document.documentElement.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    const n = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = n;
+    try { localStorage.setItem("np-theme", n); } catch {}
+  };
+})();
+
+/* ---------- API ---------- */
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + (store.get("np-token") || ""), ...(opts.headers || {}) },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== "/api/login") { logout(); throw new Error("Sesión vencida"); }
+  if (!res.ok) throw new Error(data.error || "Error " + res.status);
+  return data;
+}
+
+$("#loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  $("#loginErr").textContent = ""; $("#loginBtn").disabled = true;
+  try {
+    const { token } = await api("/api/login", { method: "POST", body: JSON.stringify({ password: $("#pwd").value }) });
+    store.set("np-token", token);
+    await start();
+  } catch (err) { $("#loginErr").textContent = err.message; }
+  finally { $("#loginBtn").disabled = false; }
+};
+function logout(){ store.del("np-token"); $("#app").classList.add("hidden"); $("#login").classList.remove("hidden"); $("#pwd").value = ""; }
+$("#logoutBtn").onclick = logout;
+
+async function start() {
+  const [n, a] = await Promise.all([api("/api/notas"), api("/api/analisis")]);
+  NOTAS = n.notas; ANALISIS = a.analisis;
+  $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
+  buildFilters(); render(); renderAnalisis();
+}
+
+/* ---------- Filtros ---------- */
+const mes = (f) => (f || "").slice(0, 7);
+function fillSelect(sel, values, label) {
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${label}</option>` + values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if (values.includes(cur)) sel.value = cur;
+}
+function uniq(key) { return [...new Set(NOTAS.map((r) => r[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")); }
+function buildFilters() {
+  fillSelect($("#fRuta"), uniq("ruta"), "Todas");
+  fillSelect($("#fChofer"), uniq("chofer"), "Todos");
+  fillSelect($("#fTipo"), uniq("tipo_reclamo"), "Todos");
+  const meses = NOTAS.map((r) => mes(r.fecha)).filter(Boolean).sort();
+  const total = NOTAS.length, forms = NOTAS.filter((r) => r.origen === "forms").length;
+  $("#subtitle").textContent = `${total} notas · ${total - forms} del histórico, ${forms} del Forms` + (meses.length ? ` · ${meses[0]} a ${meses[meses.length - 1]}` : "");
+}
+["#fDesde","#fHasta","#fRuta","#fChofer","#fTipo","#fOrigen"].forEach((s) => $(s).addEventListener("change", render));
+$("#clearBtn").onclick = () => { ["#fDesde","#fHasta","#fRuta","#fChofer","#fTipo","#fOrigen"].forEach((s) => ($(s).value = "")); render(); };
+function filtered() {
+  const d = $("#fDesde").value, h = $("#fHasta").value, ru = $("#fRuta").value, ch = $("#fChofer").value, ti = $("#fTipo").value, or = $("#fOrigen").value;
+  return NOTAS.filter((r) => {
+    const m = mes(r.fecha);
+    if (d && (!m || m < d)) return false;
+    if (h && (!m || m > h)) return false;
+    if (ru && r.ruta !== ru) return false;
+    if (ch && r.chofer !== ch) return false;
+    if (ti && r.tipo_reclamo !== ti) return false;
+    if (or && r.origen !== or) return false;
+    return true;
+  });
+}
+function count(rows, key) {
+  const m = new Map();
+  rows.forEach((r) => { const k = r[key] || "(sin dato)"; m.set(k, (m.get(k) || 0) + 1); });
+  return [...m.entries()].sort((a, b) => b[1] - a[1]);
+}
+function mesLabel(m) { const [y, mm] = m.split("-"); return `${MESES[+mm - 1]} ${y.slice(2)}`; }
+function mesRange(rows) {
+  const ms = rows.map((r) => mes(r.fecha)).filter(Boolean).sort();
+  if (!ms.length) return [];
+  const out = []; let [y, m] = ms[0].split("-").map(Number); const [ey, em] = ms[ms.length - 1].split("-").map(Number);
+  while (y < ey || (y === ey && m <= em)) { out.push(`${y}-${String(m).padStart(2, "0")}`); m++; if (m > 12) { m = 1; y++; } }
+  return out;
+}
+
+/* ---------- Tooltip ---------- */
+const tip = $("#tip");
+document.addEventListener("mousemove", (e) => {
+  const t = e.target.closest("[data-tip]");
+  if (!t) { tip.classList.add("hidden"); return; }
+  tip.textContent = t.dataset.tip; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.remove("hidden");
+});
+
+/* ---------- Render ---------- */
+function render() {
+  const rows = filtered();
+  renderTiles(rows); renderMes(rows);
+  renderHBars("#chartTipo", count(rows, "tipo_reclamo"), "#fTipo", 13);
+  renderHBars("#chartChofer", count(rows, "chofer"), "#fChofer", 25);
+  renderHBars("#chartRuta", count(rows, "ruta"), "#fRuta", 25);
+  renderHeat(rows); renderReinc(rows); renderDetalle(rows);
+}
+
+function renderTiles(rows) {
+  const meses = mesRange(rows);
+  const porMes = new Map(count(rows.map((r) => ({ m: mes(r.fecha) })), "m"));
+  const ult = meses[meses.length - 1], prev = meses[meses.length - 2];
+  const nU = porMes.get(ult) || 0, nP = porMes.get(prev) || 0;
+  const delta = prev ? nU - nP : null;
+  const prom = meses.length ? (rows.filter((r) => r.fecha).length / meses.length) : 0;
+  const clientes = count(rows.filter((r) => r.codigo_cliente), "codigo_cliente");
+  const reinc = clientes.filter(([, n]) => n >= 2).length;
+  const choferes = new Set(rows.map((r) => r.chofer).filter(Boolean)).size;
+  const tiles = [
+    ["Total de notas", rows.length, `${meses.length} meses en el periodo`],
+    [ult ? `Último mes (${mesLabel(ult)})` : "Último mes", nU, delta === null ? "—" : `${delta > 0 ? "▲ +" : delta < 0 ? "▼ " : "= "}${delta} vs ${mesLabel(prev)}`],
+    ["Promedio mensual", prom.toFixed(1), "notas por mes"],
+    ["Clientes reincidentes", reinc, `de ${clientes.length} clientes con notas`],
+    ["Choferes con notas", choferes, "en el periodo"],
+  ];
+  $("#tiles").innerHTML = tiles.map(([l, v, d]) => `<div class="tile"><div class="lbl">${esc(l)}</div><div class="val">${esc(v)}</div><div class="delta">${esc(d)}</div></div>`).join("");
+}
+
+function renderMes(rows) {
+  const meses = mesRange(rows);
+  const porMes = new Map(count(rows.map((r) => ({ m: mes(r.fecha) })), "m"));
+  if (!meses.length) { $("#chartMes").innerHTML = `<p class="note">Sin datos para estos filtros.</p>`; return; }
+  const max = Math.max(...meses.map((m) => porMes.get(m) || 0), 1);
+  $("#chartMes").innerHTML =
+    `<div class="cols">${meses.map((m) => { const v = porMes.get(m) || 0; return `<div class="col" data-tip="${esc(mesLabel(m))}: ${v} notas"><span class="v">${v}</span><div class="bar" style="height:${(v / max) * 100}%"></div></div>`; }).join("")}</div>` +
+    `<div class="col-labels">${meses.map((m) => `<span>${esc(mesLabel(m))}</span>`).join("")}</div>`;
+}
+
+function renderHBars(target, data, filterSel, limit) {
+  const el = $(target);
+  if (!data.length) { el.innerHTML = `<p class="note">Sin datos.</p>`; return; }
+  const shown = data.slice(0, limit), rest = data.slice(limit);
+  if (rest.length) shown.push([`Otros (${rest.length})`, rest.reduce((s, [, n]) => s + n, 0)]);
+  const max = Math.max(...shown.map(([, n]) => n));
+  const cur = $(filterSel).value;
+  el.innerHTML = shown.map(([k, n]) =>
+    `<div class="hrow${cur === k ? " sel" : ""}" data-k="${esc(k)}" data-tip="${esc(k)}: ${n}"><span class="n">${esc(k)}</span><div class="track"><div class="fill" style="width:${(n / max) * 100}%"></div></div><span class="c">${n}</span></div>`).join("");
+  el.querySelectorAll(".hrow").forEach((r) => r.onclick = () => {
+    const k = r.dataset.k; if (k.startsWith("Otros (") || k === "(sin dato)") return;
+    const sel = $(filterSel); sel.value = sel.value === k ? "" : k; render();
+  });
+}
+
+function renderHeat(rows) {
+  const meses = mesRange(rows);
+  const choferes = count(rows.filter((r) => r.chofer), "chofer").map(([k]) => k);
+  if (!meses.length || !choferes.length) { $("#heat").innerHTML = ""; $("#heatLegend").innerHTML = ""; return; }
+  const m = new Map();
+  rows.forEach((r) => { if (!r.chofer || !r.fecha) return; const k = r.chofer + "|" + mes(r.fecha); m.set(k, (m.get(k) || 0) + 1); });
+  const max = Math.max(...m.values(), 1);
+  const step = (v) => (v === 0 ? 0 : Math.min(6, 1 + Math.floor(((v - 1) / Math.max(max - 1, 1)) * 5.999)));
+  $("#heat").innerHTML =
+    `<thead><tr><th>Chofer</th>${meses.map((x) => `<th>${esc(mesLabel(x))}</th>`).join("")}<th class="num">Total</th></tr></thead><tbody>` +
+    choferes.map((c) => {
+      let tot = 0;
+      const cells = meses.map((x) => { const v = m.get(c + "|" + x) || 0; tot += v; const s = step(v);
+        return `<td class="h${s >= 4 ? " dark" : ""}" style="background:var(--seq-${s})" data-tip="${esc(c)} · ${esc(mesLabel(x))}: ${v}">${v || ""}</td>`; }).join("");
+      return `<tr><td>${esc(c)}</td>${cells}<td class="num"><b>${tot}</b></td></tr>`;
+    }).join("") + "</tbody>";
+  $("#heatLegend").innerHTML = `Menos ${[0,1,2,3,4,5,6].map((s) => `<i style="background:var(--seq-${s})"></i>`).join("")} Más (máx. ${max} en un mes)`;
+}
+
+function renderReinc(rows) {
+  const g = new Map();
+  rows.forEach((r) => { if (!r.codigo_cliente) return; const e = g.get(r.codigo_cliente) || { n: 0, nombre: r.nombre_cliente, ruta: r.ruta, ult: "" }; e.n++; if ((r.fecha || "") > e.ult) e.ult = r.fecha || ""; g.set(r.codigo_cliente, e); });
+  const list = [...g.entries()].filter(([, e]) => e.n >= 2).sort((a, b) => b[1].n - a[1].n);
+  $("#reinc").innerHTML = list.length
+    ? `<thead><tr><th>Código</th><th>Cliente</th><th>Ruta</th><th class="num">Notas</th><th>Última</th></tr></thead><tbody>` +
+      list.map(([k, e]) => `<tr><td>${esc(k)}</td><td>${esc(e.nombre)}</td><td>${esc(e.ruta)}</td><td class="num"><b>${e.n}</b></td><td>${esc(e.ult)}</td></tr>`).join("") + "</tbody>"
+    : `<tbody><tr><td>No hay clientes reincidentes en este periodo.</td></tr></tbody>`;
+}
+
+const DET_COLS = [["fecha","Fecha"],["ruta","Ruta"],["chofer","Chofer"],["codigo_cliente","Código"],["nombre_cliente","Cliente"],["tipo_reclamo","Tipo de reclamo"],["situacion","Situación"],["categoria","Categoría"],["vehiculo","Vehículo"],["vendedor","Vendedor"],["origen","Origen"]];
+let detRows = [];
+function renderDetalle(rows) {
+  const q = $("#search").value.trim().toLowerCase();
+  detRows = q ? rows.filter((r) => DET_COLS.some(([k]) => String(r[k] || "").toLowerCase().includes(q))) : rows;
+  $("#countDetalle").textContent = `${detRows.length} notas`;
+  const shown = detRows.slice(0, 500);
+  $("#detalle").innerHTML = `<thead><tr>${DET_COLS.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>` +
+    shown.map((r) => `<tr>${DET_COLS.map(([k]) => k === "origen" ? `<td><span class="tag">${r.origen === "forms" ? "Forms" : "Histórico"}</span></td>` : `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("") + "</tbody>" +
+    (detRows.length > 500 ? `<tfoot><tr><td colspan="${DET_COLS.length}" style="color:var(--muted)">Mostrando 500 de ${detRows.length}. Usa la búsqueda o descarga el CSV.</td></tr></tfoot>` : "");
+}
+$("#search").addEventListener("input", () => renderDetalle(filtered()));
+$("#csvBtn").onclick = () => {
+  const lines = [DET_COLS.map(([, l]) => l).join(",")].concat(detRows.map((r) => DET_COLS.map(([k]) => `"${String(r[k] ?? "").replace(/"/g, '""')}"`).join(",")));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `notas-publicas-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+};
+
+function renderAnalisis() {
+  const cols = [["fecha","Fecha"],["ruta","Ruta"],["nombre_cliente","Cliente"],["tipo_reclamo","Tipo de reclamo"],["kpi","KPI"],["porque1","1º Por qué"],["porque2","2º"],["porque3","3º"],["porque4","4º"],["porque5","5º"],["accion_correctiva","Acción correctiva"]];
+  $("#analisis").innerHTML = `<thead><tr>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>` +
+    ANALISIS.map((r) => `<tr>${cols.map(([k]) => `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("") + "</tbody>";
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tab").forEach((t) => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x === t));
+  ["resumen","detalle","analisis"].forEach((n) => $("#tab-" + n).classList.toggle("hidden", n !== t.dataset.tab));
+  $("#filters").classList.toggle("hidden", t.dataset.tab === "analisis");
+});
+
+/* ---------- Importar Excel del Forms ---------- */
+const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+const CAMPOS = {
+  fecha: ["fecha del reporte"], ruta: ["ruta de entrega"], chofer: ["nombre del chofer"], vehiculo: ["vehiculo"],
+  categoria: ["categoria"], codigo_cliente: ["codigo del cliente"], nombre_cliente: ["nombre del cliente"],
+  tipo_reclamo: ["tipo de reclamo"], situacion: ["describe la situacion"], vendedor: ["vendedor"],
+};
+function fechaISO(v) {
+  if (v == null || v === "") return null;
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}` : null; }
+  const s = String(v).trim(); let m;
+  if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/))) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  return null;
+}
+$("#fileInput").onchange = async (e) => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+    if (!raw.length) throw new Error("El archivo no tiene filas.");
+    const headers = Object.keys(raw[0]);
+    const idCol = headers.find((h) => norm(h) === "id");
+    if (!idCol) throw new Error("No encuentro la columna «Id». Usa el Excel descargado desde «Ver respuestas → Abrir en Excel» del Forms.");
+    const col = {};
+    for (const [campo, pref] of Object.entries(CAMPOS)) col[campo] = headers.find((h) => pref.some((p) => norm(h).startsWith(p)));
+    const inicio = headers.find((h) => norm(h).startsWith("hora de inicio"));
+    const filas = raw.filter((r) => r[idCol] !== "").map((r) => {
+      const f = { ext_id: "forms-" + String(r[idCol]).trim(), centro: "CND CD Bávaro" };
+      for (const [campo, h] of Object.entries(col)) if (h) f[campo] = campo === "fecha" ? fechaISO(r[h]) : String(r[h]).trim() || null;
+      if (!f.fecha && inicio) f.fecha = fechaISO(r[inicio]);
+      f.chofer_original = f.chofer || null;
+      return f;
+    });
+    if (!confirm(`Se encontraron ${filas.length} respuestas en el archivo.\nSolo se agregarán las que aún no estén en la base. ¿Continuar?`)) return;
+    const res = await api("/api/importar", { method: "POST", body: JSON.stringify({ filas }) });
+    alert(`Listo: ${res.nuevas} notas nuevas agregadas, ${res.repetidas} ya estaban cargadas.`);
+    await start();
+  } catch (err) { alert("No se pudo importar: " + err.message); }
+};
+
+/* ---------- Inicio ---------- */
+if (store.get("np-token")) start().catch(() => logout());
+</script>
+</body>
+</html>

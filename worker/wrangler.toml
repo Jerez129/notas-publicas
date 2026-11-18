@@ -1,0 +1,15 @@
+name = "notas-publicas-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://jerez129.github.io,http://localhost:8080"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "notas-publicas-db"
+database_id = "d40f13bf-6697-4e27-8e3d-fb66f30afad3"
+
+# Secretos (no van en este archivo):
+#   npx wrangler secret put DASH_PASSWORD
+#   npx wrangler secret put TOKEN_SECRET
