@@ -310,10 +310,17 @@ let NOTAS = [], ANALISIS = [];
 
 /* ---------- API ---------- */
 async function api(path, opts = {}) {
-  const res = await fetch(API + path, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: "Bearer " + (store.get("np-token") || ""), ...(opts.headers || {}) },
-  });
+  let res;
+  try {
+    res = await fetch(API + path, {
+      ...opts,
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + (store.get("np-token") || ""), ...(opts.headers || {}) },
+    });
+  } catch {
+    throw new Error(location.protocol === "file:"
+      ? "Abre el dashboard desde https://jerez129.github.io/notas-publicas/ (no desde el archivo de la carpeta)."
+      : "No se pudo conectar con el servidor (workers.dev). Revisa tu internet; si estás en la red de la empresa, puede que esté bloqueado: prueba con datos móviles.");
+  }
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && path !== "/api/login") { logout(); throw new Error("Sesión vencida"); }
   if (!res.ok) throw new Error(data.error || "Error " + res.status);

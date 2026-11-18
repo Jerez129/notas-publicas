@@ -9,11 +9,11 @@ const NOTA_COLS = [
 ];
 const TOKEN_HORAS = 12;
 
-function cors(env, req) {
-  const origin = req.headers.get("Origin") || "";
-  const allowed = (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim());
+// La API se autentica con token Bearer (no cookies), así que permitir cualquier
+// origen no abre CSRF; evita "Failed to fetch" al abrir la página desde otra URL.
+function cors() {
   return {
-    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0] || "",
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Max-Age": "86400",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
@@ -57,7 +57,7 @@ async function tokenValido(env, req) {
 
 export default {
   async fetch(req, env) {
-    const h = cors(env, req);
+    const h = cors();
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
     const { pathname } = new URL(req.url);
 

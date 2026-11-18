@@ -2,9 +2,6 @@ name = "notas-publicas-api"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
-[vars]
-ALLOWED_ORIGINS = "https://jerez129.github.io,http://localhost:8080"
-
 [[d1_databases]]
 binding = "DB"
 database_name = "notas-publicas-db"
