@@ -26,7 +26,7 @@ CHOFERES = [
     "Edifo Antonio Pache Pache", "Emmanuel Cedano Santana",
     "Gilbert Martínez Cuevas", "Hensy Emmanuel Guilamo",
     "Joaquín Alberto Mateo Encarnación", "Jonathan Sánchez",
-    "Juan Edward Ibert Encarnación", "Miguel Ángel De Jesús",
+    "Miguel Ángel De Jesús",
     "Ramón Antonio Escarlante Carrasco", "Reye Ferrera",
     "Rikelvin Cedeño Shepard", "Rubén Esteban Schleider Mercedes",
     "Salvador Santo De La Rosa", "Samuel De La Cruz Nuñez",
@@ -40,7 +40,10 @@ def key(s):
     return " ".join(s.upper().split())
 
 
-CANON = {key(n): n for n in CHOFERES}
+# Ya no forman parte de la empresa (sus notas se reparten con redistribuir.py)
+EX_CHOFERES = ["Juan Edward Ibert Encarnación", "Alexander Antonio Salazar Bastardo"]
+
+CANON = {key(n): n for n in CHOFERES + EX_CHOFERES}
 ALIAS = {
     "REYE FERRERA DELGADO": "Reye Ferrera",
     "RUBEN ESTEBAN MERCEDES": "Rubén Esteban Schleider Mercedes",

@@ -59,3 +59,11 @@ CREATE TABLE IF NOT EXISTS roadmap_raw (
   ext_id    TEXT NOT NULL UNIQUE,
   fila_json TEXT NOT NULL
 );
+
+-- Choferes del Headcount (activo=0 si ya no está en la empresa)
+CREATE TABLE IF NOT EXISTS choferes (
+  nombre         TEXT PRIMARY KEY,
+  activo         INTEGER NOT NULL DEFAULT 1,
+  ruta           TEXT,
+  actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+);

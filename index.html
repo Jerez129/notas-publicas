@@ -292,7 +292,13 @@ const store = {
   del(k){ try { sessionStorage.removeItem(k); } catch {} },
 };
 
-let NOTAS = [], ANALISIS = [];
+let NOTAS = [], ANALISIS = [], ACTIVOS = [];
+// Choferes activos sin notas en las filas dadas (para que aparezcan con 0)
+function activosSinNotas(rows) {
+  if ($("#fRuta").value || $("#fChofer").value) return [];
+  const con = new Set(rows.map((r) => r.chofer));
+  return ACTIVOS.filter((c) => !con.has(c));
+}
 
 /* ---------- Tema ---------- */
 (function(){
@@ -343,8 +349,9 @@ function logout(){ store.del("np-token"); $("#app").classList.add("hidden"); $("
 $("#logoutBtn").onclick = logout;
 
 async function start() {
-  const [n, a] = await Promise.all([api("/api/notas"), api("/api/analisis")]);
+  const [n, a, c] = await Promise.all([api("/api/notas"), api("/api/analisis"), api("/api/choferes")]);
   NOTAS = n.notas; ANALISIS = a.analisis;
+  ACTIVOS = c.choferes.filter((x) => x.activo).map((x) => x.nombre);
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   buildFilters(); render(); renderAnalisis();
 }
@@ -359,7 +366,7 @@ function fillSelect(sel, values, label) {
 function uniq(key) { return [...new Set(NOTAS.map((r) => r[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")); }
 function buildFilters() {
   fillSelect($("#fRuta"), uniq("ruta"), "Todas");
-  fillSelect($("#fChofer"), uniq("chofer"), "Todos");
+  fillSelect($("#fChofer"), [...new Set([...ACTIVOS, ...uniq("chofer")])].sort((a, b) => a.localeCompare(b, "es")), "Todos");
   fillSelect($("#fTipo"), uniq("tipo_reclamo"), "Todos");
   const meses = NOTAS.map((r) => mes(r.fecha)).filter(Boolean).sort();
   const total = NOTAS.length, forms = NOTAS.filter((r) => r.origen === "forms").length;
@@ -410,7 +417,7 @@ function render() {
   const rows = filtered();
   renderTiles(rows); renderMes(rows);
   renderHBars("#chartTipo", count(rows, "tipo_reclamo"), "#fTipo", 13);
-  renderHBars("#chartChofer", count(rows, "chofer"), "#fChofer", 25);
+  renderHBars("#chartChofer", [...count(rows, "chofer"), ...activosSinNotas(rows).map((c) => [c, 0])], "#fChofer", 25);
   renderHBars("#chartRuta", count(rows, "ruta"), "#fRuta", 25);
   renderHeat(rows); renderReinc(rows); renderDetalle(rows);
 }
@@ -432,7 +439,7 @@ function renderTiles(rows) {
     [ult ? `Último mes (${mesLabel(ult)})` : "Último mes", nU, delta === null ? "—" : `${delta > 0 ? "▲ +" : delta < 0 ? "▼ " : "= "}${delta} vs ${mesLabel(prev)}`],
     ["Promedio mensual", prom.toFixed(1), "notas por mes"],
     ["Clientes reincidentes", reinc, `de ${clientes.length} clientes con notas`],
-    ["Choferes con notas", choferes, "en el periodo"],
+    ["Choferes con notas", choferes, ACTIVOS.length ? `de ${ACTIVOS.length} choferes activos` : "en el periodo"],
   ];
   $("#tiles").innerHTML = tiles.map(([l, v, d]) => `<div class="tile"><div class="lbl">${esc(l)}</div><div class="val">${esc(v)}</div><div class="delta">${esc(d)}</div></div>`).join("");
 }
@@ -464,7 +471,7 @@ function renderHBars(target, data, filterSel, limit) {
 
 function renderHeat(rows) {
   const meses = mesRange(rows);
-  const choferes = count(rows.filter((r) => r.chofer), "chofer").map(([k]) => k);
+  const choferes = [...count(rows.filter((r) => r.chofer), "chofer").map(([k]) => k), ...activosSinNotas(rows)];
   if (!meses.length || !choferes.length) { $("#heat").innerHTML = ""; $("#heatLegend").innerHTML = ""; return; }
   const m = new Map();
   rows.forEach((r) => { if (!r.chofer || !r.fecha) return; const k = r.chofer + "|" + mes(r.fecha); m.set(k, (m.get(k) || 0) + 1); });

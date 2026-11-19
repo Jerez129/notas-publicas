@@ -89,6 +89,11 @@ export default {
         return json({ notas: results }, 200, h);
       }
 
+      if (pathname === "/api/choferes" && req.method === "GET") {
+        const { results } = await env.DB.prepare("SELECT nombre, activo, ruta FROM choferes ORDER BY nombre").all();
+        return json({ choferes: results }, 200, h);
+      }
+
       if (pathname === "/api/analisis" && req.method === "GET") {
         const { results } = await env.DB.prepare(
           `SELECT a.*, n.chofer, n.fecha AS nota_fecha FROM analisis a LEFT JOIN notas n ON n.id = a.nota_id
