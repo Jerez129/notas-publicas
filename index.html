@@ -588,25 +588,42 @@ $("#fileInput").onchange = async (e) => {
   const file = e.target.files[0]; e.target.value = "";
   if (!file) return;
   try {
-    const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
+    // Sin cellDates: las fechas llegan como número de serie de Excel (sin desfases de zona horaria)
+    const wb = XLSX.read(await file.arrayBuffer());
     const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
     if (!raw.length) throw new Error("El archivo no tiene filas.");
     const headers = Object.keys(raw[0]);
     const idCol = headers.find((h) => norm(h) === "id");
-    if (!idCol) throw new Error("No encuentro la columna «Id». Usa el Excel descargado desde «Ver respuestas → Abrir en Excel» del Forms.");
+    if (!idCol) throw new Error("No encuentro la columna «ID». Usa el Excel descargado desde «Ver respuestas → Abrir en Excel» del Forms.");
     const col = {};
     for (const [campo, pref] of Object.entries(CAMPOS)) col[campo] = headers.find((h) => pref.some((p) => norm(h).startsWith(p)));
     const inicio = headers.find((h) => norm(h).startsWith("hora de inicio"));
+    const fin = headers.find((h) => norm(h).startsWith("hora de finalizacion")) || inicio;
+    const fechaHora = (v) => { const d = typeof v === "number" ? XLSX.SSF.parse_date_code(v) : null;
+      return d ? `${String(d.d).padStart(2,"0")}/${String(d.m).padStart(2,"0")} ${String(d.H).padStart(2,"0")}:${String(d.M).padStart(2,"0")}` : String(v || ""); };
     const filas = raw.filter((r) => r[idCol] !== "").map((r) => {
-      const f = { ext_id: "forms-" + String(r[idCol]).trim(), centro: "CND CD Bávaro" };
+      // Clave anti-duplicados: ID del Forms + hora de inicio (por si Forms reutiliza un ID)
+      const seg = typeof r[inicio] === "number" ? Math.round(r[inicio] * 86400) : String(r[inicio] || "").trim();
+      const f = { ext_id: `forms-${String(r[idCol]).trim()}-${seg}`, centro: "CND CD Bávaro" };
       for (const [campo, h] of Object.entries(col)) if (h) f[campo] = campo === "fecha" ? fechaISO(r[h]) : String(r[h]).trim() || null;
       if (!f.fecha && inicio) f.fecha = fechaISO(r[inicio]);
       f.chofer_original = f.chofer || null;
+      f._id = String(r[idCol]).trim(); f._enviado = fechaHora(r[fin]);
       return f;
     });
-    if (!confirm(`Se encontraron ${filas.length} respuestas en el archivo.\nSolo se agregarán las que aún no estén en la base. ¿Continuar?`)) return;
-    const res = await api("/api/importar", { method: "POST", body: JSON.stringify({ filas }) });
-    alert(`Listo: ${res.nuevas} notas nuevas agregadas, ${res.repetidas} ya estaban cargadas.`);
+    const cargadas = new Set(NOTAS.map((n) => n.ext_id));
+    const nuevas = filas.filter((f) => !cargadas.has(f.ext_id));
+    const ultima = filas.reduce((a, f) => (Number(f._id) > Number(a._id) ? f : a), filas[0]);
+    if (!nuevas.length) {
+      alert(`Este archivo no trae respuestas nuevas: sus ${filas.length} respuestas ya están en el dashboard.\n\n` +
+        `La más reciente del archivo es la ID ${ultima._id} (enviada ${ultima._enviado}).\n\n` +
+        `Si acabas de enviar una respuesta, vuelve a descargar el Excel desde Forms → Ver respuestas → Abrir en Excel y sube ese archivo nuevo.`);
+      return;
+    }
+    const lista = nuevas.slice(0, 8).map((f) => `• ID ${f._id} · ${f._enviado} · ${f.chofer || "?"} · ${f.nombre_cliente || ""}`).join("\n");
+    if (!confirm(`El archivo trae ${filas.length} respuestas: ${nuevas.length} nuevas y ${filas.length - nuevas.length} ya cargadas.\n\n${lista}${nuevas.length > 8 ? `\n… y ${nuevas.length - 8} más` : ""}\n\n¿Agregar las nuevas?`)) return;
+    const res = await api("/api/importar", { method: "POST", body: JSON.stringify({ filas: nuevas.map(({ _id, _enviado, ...f }) => f) }) });
+    alert(`Listo: ${res.nuevas} notas nuevas agregadas.`);
     await start();
   } catch (err) { alert("No se pudo importar: " + err.message); }
 };
