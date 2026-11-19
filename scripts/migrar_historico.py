@@ -60,14 +60,19 @@ def chofer_norm(raw):
 
 
 def clean(v):
-    if v is None:
+    if v is None or isinstance(v, dt.time):
         return None
     if isinstance(v, (dt.datetime, dt.date)):
-        return v.strftime("%Y-%m-%d")
+        return v.strftime("%Y-%m-%d") if v.year >= 2000 else None
     s = str(v).strip()
-    if s in ("", "#REF!", "N/A", "0", "."):
+    if s in ("", "#REF!", "#N/A", "N/A", "0", "."):
         return None
     return s
+
+
+def fila_real(fecha, cliente):
+    """Descarta filas de fórmulas arrastradas (fecha 00:00 y cliente #N/A)."""
+    return isinstance(fecha, (dt.datetime, dt.date)) and fecha.year >= 2000 or clean(cliente) is not None
 
 
 def dtime(v):
@@ -117,7 +122,7 @@ def main(path):
     n_notas = 0
     for r in rows(wb["Data"]):
         fecha = r.get("Fecha")
-        if not fecha and not r.get("Nombre Cliente"):
+        if not fila_real(fecha, r.get("Nombre Cliente")):
             continue
         # En el Excel el encabezado viene dañado ("Queja del Cliente ó Chofer"),
         # así que se busca por la palabra "QUEJA".
@@ -159,7 +164,7 @@ def main(path):
     # --- KPIS: análisis 5 porqués --------------------------------------
     n_an = 0
     for r in rows(wb["KPIS"]):
-        if not r.get("Fecha") and not r.get("Cliente"):
+        if not fila_real(r.get("Fecha"), r.get("Cliente")):
             continue
         vals = {
             "ext_id": ext_id("kpi", r.get("Fecha"), r.get("Cod Cliente"), r.get("Situacion"), seen=seen),
@@ -182,9 +187,9 @@ def main(path):
     # --- PEGAR DATA ROADMAP: respaldo crudo ----------------------------
     n_rm = 0
     for r in rows(wb["PEGAR DATA ROADMAP"]):
-        data = {k: clean(v) for k, v in r.items() if k and clean(v) is not None}
-        if not data:
+        if not clean(r.get("grupo")):  # filas de fórmulas arrastradas hasta el final de la hoja
             continue
+        data = {k: clean(v) for k, v in r.items() if k and clean(v) is not None}
         eid = ext_id("rm", r.get("grupo"), r.get("fecha_registro"), r.get("observacion"), seen=seen)
         out.append(f"INSERT OR IGNORE INTO roadmap_raw (ext_id, fila_json) VALUES ({sql(eid)},{sql(json.dumps(data, ensure_ascii=False))});")
         n_rm += 1

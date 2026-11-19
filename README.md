@@ -27,8 +27,8 @@ En **Detalle de notas** cada nota tiene un botón **Hacer** (o **✓ Ver** si ya
 
 | Tabla | Contenido |
 |---|---|
-| `notas` | Histórico de la hoja *Data* (254 notas, ene–jun 2026) + respuestas del Forms |
-| `analisis` | Hoja *KPIS*: análisis de 5 porqués y acciones correctivas |
+| `notas` | Histórico de la hoja *Data* de «Notas Públicas BVR V2» (349 notas, ene–oct 2026) + respuestas del Forms |
+| `analisis` | Hoja *KPIS*: 170 análisis de 5 porqués ligados a su nota, más los que se hagan desde el dashboard |
 | `roadmap_raw` | Respaldo crudo de la hoja *PEGAR DATA ROADMAP* |
 
 ## Mantenimiento
@@ -46,3 +46,6 @@ Volver a cargar el histórico (no duplica, usa `INSERT OR IGNORE`):
 python scripts/migrar_historico.py "ruta/a/nota1.xlsx"
 cd worker && npx wrangler d1 execute notas-publicas-db --remote --file=../data/seed.sql
 ```
+
+Después de cargar, ligar los 5 porqués con su nota y reasignar notas de choferes que ya no están
+(ver las instrucciones dentro de `scripts/ligar_analisis.py` y `scripts/redistribuir.py`).
